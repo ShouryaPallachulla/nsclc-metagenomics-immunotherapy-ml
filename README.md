@@ -17,6 +17,7 @@ permutation test.
 
 ## Contents
 | File | Purpose |
+| ---- | ---- |
 | `classification_pipeline.py` | Feature selection, model training and tuning, external validation |
 | `treeshap_analysis.py` | TreeSHAP importance analysis on the validation cohort |
 | `LICENSE` | MIT |
@@ -30,11 +31,11 @@ section). The scripts expect preprocessed CSVs:
   Columns: `Run`, `Cohort` (`Derosa`, `Frankel`, `McCulloch`, or `Lee`), `Class`
   (`R` or `NR`), then one column per species. Every file must contain the same patients.
 - **Validation table**: the Routy cohort with a `Class` column and the same species
-  column names. Markers missing from it are zero-filled with a warning.
+  column names. Markers missing from it are zero-filled and listed in the console.
 
 Upstream preprocessing is not included: Galaxy (KneadData, Bowtie2, MetaPhlAn4) for
-the raw cohorts, then undersampling, MMUPHin batch correction, and prevalence
-filtering in R 4.6.0.
+cohorts distributed as raw FASTQ files, then undersampling, MMUPHin batch correction,
+and prevalence filtering in R 4.6.0.
 
 ## Setup
 Python 3.10:
@@ -44,19 +45,21 @@ pip install numpy==2.2.6 pandas==2.3.1 scipy==1.15.3 scikit-learn==1.7.2 xgboost
 
 ## Usage
 **Pipeline.** Edit the paths at the top of `classification_pipeline.py`
-(`PREVALENCE_DIR`, `ROUTY_TEST_PATH`, and the output folder inside `evaluate_external`,
-which must already exist). Set `MODEL_TO_RUN` to `"rf"`, `"xgboost"`, `"svc"`, or
-`"logreg"` and run it once per model:
+(`PREVALENCE_DIR`, `ROUTY_TEST_PATH`, and the output folder, which is set twice inside
+`evaluate_external` and must already exist). Set `MODEL_TO_RUN` to `"rf"`,
+`"xgboost"`, `"svc"`, or `"logreg"` and run it once per model:
 ```
 python classification_pipeline.py
 ```
 The grid searches use all CPU cores and can take a while. Set
 `RUN_PERMUTATION_TEST = True` to enable the permutation test (off by default).
 
-**TreeSHAP.** After an XGBoost run, copy the marker names from the "Winning config's
-marker features" section of the console log into a text file, one per line. The
-validation CSV for this script must contain every marker column, so add the
-zero-filled ones. Set the paths in the config section and run:
+**TreeSHAP.** After an XGBoost run, copy just the marker names from the "Winning
+config's marker features" section of the console log into a text file, one per line.
+In `treeshap_analysis.py`, set `MODEL_TYPE`, `DISCOVERY_DATA_PATH` (the discovery table
+at the winning prevalence level, e.g. `species_prev10.csv`), `VALIDATION_DATA_PATH`,
+`BIOMARKER_LIST_PATH`, and `OUTPUT_DIR`. The validation CSV must contain every marker
+column, so add the zero-filled ones. Then run:
 ```
 python treeshap_analysis.py
 ```
@@ -65,13 +68,14 @@ python treeshap_analysis.py
 ## Outputs
 | Output | Figure/Table |
 |---|---|
-| ROC curve PNG per model | Figure 1A-D |
-| Permutation-test PNG | Figure 4 |
-| Console log (survivor grids, tuning results, top-10 biomarkers) | Tables 1-2, Supp. Tables S1-S4 |
-| `top10_shap_bar.png` | Figure 5 |
+| ROC curve PNG per model (`<model>_Routy_roc_curve.png`) | Figure 1 |
+| Permutation-test PNG (`<model>_Routy_permutation_test.png`) | Figure 6 |
+| Console log (thresholds, hyperparameters, survivor-count grids, top-10 biomarkers) | Supp. Tables S1-S4 |
+| `top10_shap_bar.png` | Figure 7 |
 | `top10_shap_beeswarm.png` | Supp. Figure S2 |
 
-Figures 1E, 2, and 3 and Supplementary Figure S1 were produced separately using data outputted to the console by these scripts.
+Figures 2-5, Supplementary Tables S1-S4, and Supplementary Figure S1 were plotted separately using data printed to
+the console by these scripts. That plotting code is not included.
 
 ## Notes
 - Seeds: 1 for models and CV folds, 123 for the permutation test.
